@@ -1,6 +1,6 @@
 #! perl -w
 package Lingua::Rhyme;
-our $VERSION = 0.09;
+our $VERSION = 0.092;
 
 use strict;
 use warnings;
@@ -90,8 +90,8 @@ our $chat;
 our $DATABASE = "rhymedict";
 our $HOSTNAME = "localhost";
 our $PORT     = "3306";
-our $USER     = 'Administrator';
-our $PASSWORD = 'shalom3761';
+our $USER     = 'NotAdministrator';
+our $PASSWORD = 'password';
 our $DRIVER   = "mysql";
 
 our $_connected;
