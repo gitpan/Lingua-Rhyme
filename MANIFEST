@@ -1,0 +1,8 @@
+Changes
+INSTALL
+MANIFEST
+Makefile.PL
+Rhyme.pm
+Rhyme/dict/EN/rhymes.txt
+Rhyme/dict/EN/words.txt
+test.pl
