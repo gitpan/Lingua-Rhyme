@@ -1,6 +1,6 @@
 #! perl -w
 package Lingua::Rhyme;
-our $VERSION = 0.07;
+our $VERSION = 0.09;
 
 use strict;
 use warnings;
@@ -12,15 +12,23 @@ Lingua::Rhyme - MySQL-based rhyme-lookups.
 
 =head1 SYNOPSIS
 
-First time:
+First time, to install the dictionary:
 
 	use Lingua::Rhyme;
 	$Lingua::Rhyme::chat=1;
-	build;
+	$Lingua::Rhyme::DATABASE = "rhymedict";
+	$Lingua::Rhyme::USER	 = "MyUserName";
+	$Lingua::Rhyme::PASSWORD = "password";
+
+	Lingua::Rhyme::build('C:/lang/win2k/perl/site/lib/lingua');
 
 Thereafter:
 
 	use Lingua::Rhyme;
+	$Lingua::Rhyme::DATABASE = "rhymedict";
+	$Lingua::Rhyme::USER	 = "MyUserName";
+	$Lingua::Rhyme::PASSWORD = "password";
+
 	my @rhymes_for_house = @{ Lingua::Rhyme::simplefind('house') };
 
 	my @rhymes_for_tomAto = @{ Lingua::Rhyme::simplefind('tomato') };
@@ -50,7 +58,8 @@ See the enclosed file, C<INSTALL>.
 
 =head1 PREREQUISITES
 
-L<DBI.pm|<DBI.pm>
+L<DBI.pm|<DBI.pm>,
+L<DBD::mysql.pm|<DBD::mysql>,
 
 =head1 CLASS VARIABLES
 
@@ -60,15 +69,15 @@ L<DBI.pm|<DBI.pm>
 
 You can set this for real-time chat on what's up, leave as C<undef> for silent operation.
 
-=item $database
+=item $DATABASE
 
 The name of the rhyming dictionary database that will be created. Defaults to C<rhymedict>.
 
-=item $driver
+=item $DRIVER
 
 The DBI::* driver, defaults to C<mysql>.
 
-=item $hostname, $port, $user. $password
+=item $HOSTNAME, $PORT, $USER. $PASSWORD
 
 The following variables must be set by the user to access the database.
 
@@ -78,12 +87,12 @@ The following variables must be set by the user to access the database.
 
 our $chat;
 
-our $database = "rhymedict";
-our $hostname = "localhost";
-our $port = "3306";
-our $user = "Administrator";
-our $password = "shalom3761";
-our $driver = "mysql";
+our $DATABASE = "rhymedict";
+our $HOSTNAME = "localhost";
+our $PORT     = "3306";
+our $USER     = 'Administrator';
+our $PASSWORD = 'shalom3761';
+our $DRIVER   = "mysql";
 
 our $_connected;
 
@@ -94,29 +103,44 @@ Functions begining with the word C<simple> will not take into account multiple p
 
 =head2 &build
 
-Running this function will create a MySQL database of two tables from the two supplied textfiles, C<words.txt> and C<rhymes.txt>, which should be in the same sub-directory Rhyme/dict/EN/.  If these tables exist, they will be dropped.
+Running this function will fill the database C<> with three tables
+from the supplied textfiles, C<words.txt>, C<rhymes.txt>, and C<multiple.txt>,
+which should be in the C<Rhyme/dict/EN/> sub-directory of this module's location..
+If these tables exist, they will be dropped.
 
-Calling with a parameter will provide some minimal chat on what's going on.
+If one paramter is supplied, it should be the directory in which this module is installed in.
 
-The process can be as slow as your system: YMMV.
+If no paramter is supplied, the script will use the first value it finds in
+C<@INC> that contains the string C<site>, because we assume this module is
+installed in a standard location. To avoid this, call with the paramter C<undef>.
+
+NB> the process will be as slow as your system: YMMV.
 
 =cut
 
 sub build {
 	local (*WORDS,*RHYMES);
-	if (defined $_[0]){ my $chat=1 }
+	my ($base, $chat)=('',1);
+	if (defined $_[0]){
+		$base = shift;
+	} else {
+		foreach (@INC){
+			$base = $_ if /site/;
+			last;
+		}
+	}
 	die "Please read the POD and edit the source code to set the database-access variables."
-		if (not defined $user and not defined $password);
-	die "Could not find words.txt from which to build db!"
-		if not -e "Rhyme/dict/EN/words.txt";
-	die "Could not find rhymes.txt from which to build db!"
-		if not -e "Rhyme/dict/EN/rhymes.txt";
-	die "Could not find multiple.txt from which to build db!"
-		if not -e "Rhyme/dict/EN/multiple.txt";
+		if (not defined $USER and not defined $PASSWORD);
+	die "Could not find words.txt from which to build db!\nDir: $base"
+		if not -e "$base/Rhyme/dict/EN/words.txt";
+	die "Could not find rhymes.txt from which to build db!\nDir: $base"
+		if not -e "$base/Rhyme/dict/EN/rhymes.txt";
+	die "Could not find multiple.txt from which to build db!\nDir: $base"
+		if not -e "$base/Rhyme/dict/EN/multiple.txt";
 
 	warn "Setting up db connection...\n" if $chat;
-	our $dsn = "DBI:$driver:database=$database;host=$hostname;port=$port";
-	our $dbh = DBI->connect($dsn, $user, $password);
+	our $dsn = "DBI:$DRIVER:database=$DATABASE;host=$HOSTNAME;port=$PORT";
+	our $dbh = DBI->connect($dsn, $USER, $PASSWORD);
 	DBI->install_driver("mysql");
 
 	#
@@ -133,7 +157,7 @@ sub build {
 			. ")"
 	);
 
-	open WORDS,"Rhyme/dict/EN/words.txt" or die "Couldn't find words.txt from which to build db table!";
+	open WORDS,"$base/Rhyme/dict/EN/words.txt" or die "Couldn't find words.txt from which to build db table!";
 	while (<WORDS>){
 		my ($word, $idx, $syllables) = split /\s/,$_;
 		$dbh->do("INSERT INTO words (word,idx,syllables) VALUES ( " .$dbh->quote($word).",".$dbh->quote($idx).",$syllables)");
@@ -153,7 +177,7 @@ sub build {
 			. ")"
 	);
 
-	open RHYMES,"Rhyme/dict/EN/rhymes.txt" or die "Couldn't find rhymes.txt from which to build db table!";
+	open RHYMES,"$base/Rhyme/dict/EN/rhymes.txt" or die "Couldn't find rhymes.txt from which to build db table!";
 	while (<RHYMES>){
 		my ($idx, $rhymes) = split /\s/,$_,2;
 		$dbh->do("INSERT INTO rhymes (idx,rhymes) VALUES ( " .$dbh->quote($idx).",".$dbh->quote($rhymes).")");
@@ -174,7 +198,7 @@ sub build {
 			. ")"
 	);
 
-	open MULTIPLE,"Rhyme/dict/EN/multiple.txt" or die "Couldn't find multiple.txt from which to build db table!";
+	open MULTIPLE,"$base/Rhyme/dict/EN/multiple.txt" or die "Couldn't find multiple.txt from which to build db table!";
 	while (<MULTIPLE>){
 		my ($word, $multiples) = split /\s/,$_,2;
 		$dbh->do("INSERT INTO multiple (word,multiples) VALUES ( " .$dbh->quote($word).",".$dbh->quote($multiples).")");
@@ -183,7 +207,7 @@ sub build {
 
 	warn "All built without problems, disconnecting...\n" if $chat;
 	$dbh->disconnect();
-	warn "...disconnected from db.\n";
+	warn "...disconnected from db.\n" if $chat;
 } # End sub build
 
 
@@ -198,10 +222,10 @@ sub _connect {
 		#warn "Already connected to db.\n" if $chat; return $_connected
 	}
 	die "Please read the POD and edit the source code to set the database-access variables."
-		if (not defined $user and not defined $password);
+		if (not defined $USER and not defined $PASSWORD);
 	warn "Connecting to db...\n" if $chat;
-	my $dsn = "DBI:$driver:database=$database;host=$hostname;port=$port";
-	my $dbh = DBI->connect($dsn, $user, $password);
+	my $dsn = "DBI:$DRIVER:database=$DATABASE;host=$HOSTNAME;port=$PORT";
+	my $dbh = DBI->connect($dsn, $USER, $PASSWORD);
 	DBI->install_driver("mysql");
 	$_connected = $dbh;
 	return $dbh;
@@ -394,8 +418,9 @@ Accepts a word to look up, and returns the number of syllables in the word suppl
 =cut
 
 sub syllable { my ($lookup) = (uc shift);
-	$_ = _syllable(_connect,$lookup);
+	my $s = _syllable(_connect,$lookup);
 	_disconnect;
+	return $s;
 }
 
 
@@ -413,8 +438,7 @@ sub _syllable { my ($dbh,$lookup) = (shift,shift);
 	$sth->execute();
 	my $syl_ref = $sth->fetchrow_arrayref();
 	warn "... and got @$syl_ref[0] syllable\n" if defined $syl_ref and $chat;
-	@$syl_ref[0] = undef if not defined $syl_ref;
-	return @$syl_ref[0];
+	return defined $syl_ref? @$syl_ref[0]  : undef;
 }
 
 
@@ -487,33 +511,39 @@ Lee Goddard <lgoddard@cpan.org>
 
 Revision history for Perl extension Text::Rhyme.
 
-0.07  Fri Jun 01 12:12:00 2001
-	- added matchall routine
+	0.081 Mon Apr 08 19:32 2002
+		- fixed buy in syllable
 
-0.06  Thu May 31 14:35:00 2001
-	- corrected connection bug
+	0.08  Mon Apr 08 19:22 2002
+		- tidied up POD and modified param of C<build()>.
 
-0.05  Thu May 31 13:13:00 2001
-	- added multiple.txt db
-	- added new functions and renamed old functions
+	0.07  Fri Jun 01 12:12:00 2001
+		- added matchall routine
 
-0.04  Wed May 30 19:01:25 2001
-	- completely rewritten - now uses a MySQL DB.
-	- moved namespace, as rhyming is now a linguist, not textual, operation (if it ever was).
+	0.06  Thu May 31 14:35:00 2001
+		- corrected connection bug
 
-0.03  Tue May 29 13:35:12 2001
-	- ACTUALLY text-rhyme-0.03
-	- added parsing of final consenants. Still I can't spell.
+	0.05  Thu May 31 13:13:00 2001
+		- added multiple.txt db
+		- added new functions and renamed old functions
 
-0.02  Tue May 29 12:32:00 2001
-	- ACTUALLY text-rhyme-0.02
-	- damn, got the module name wrong!
+	0.04  Wed May 30 19:01:25 2001
+		- completely rewritten - now uses a MySQL DB.
+		- moved namespace, as rhyming is now a linguist, not textual, operation (if it ever was).
 
-0.01  Tue May 29 12:18:12 2001
-	- ACTUALLY text-rhyme-0.01
-	- original version; created by h2xs 1.20 with options
+	0.03  Tue May 29 13:35:12 2001
+		- ACTUALLY text-rhyme-0.03
+		- added parsing of final consenants. Still I can't spell.
 
-		-Xcfn Text::Rhyme
+	0.02  Tue May 29 12:32:00 2001
+		- ACTUALLY text-rhyme-0.02
+		- damn, got the module name wrong!
+
+	0.01  Tue May 29 12:18:12 2001
+		- ACTUALLY text-rhyme-0.01
+		- original version; created by h2xs 1.20 with options
+
+			-Xcfn Text::Rhyme
 
 
 

@@ -1,5 +1,8 @@
 Revision history for Perl extension Text::Rhyme.
 
+0.08  Mon Apr 08 19:22 2002
+	- tidied up POD and modified param of C<build()>.
+
 0.07  Fri Jun 01 12:12:00 2001
 	- added matchall routine
 
