@@ -1,6 +1,6 @@
 #! perl -w
 package Lingua::Rhyme;
-our $VERSION = 0.06;
+our $VERSION = 0.07;
 
 use strict;
 use warnings;
@@ -50,10 +50,11 @@ See the enclosed file, C<INSTALL>.
 
 =head1 PREREQUISITES
 
-	MySQL
-	DBI.pm
+L<DBI.pm|<DBI.pm>
 
 =head1 CLASS VARIABLES
+
+=over 4
 
 =item $chat
 
@@ -67,15 +68,11 @@ The name of the rhyming dictionary database that will be created. Defaults to C<
 
 The DBI::* driver, defaults to C<mysql>.
 
+=item $hostname, $port, $user. $password
+
 The following variables must be set by the user to access the database.
 
-=item $hostname
-
-=item $port
-
-=item $user
-
-=item $password
+=back
 
 =cut
 
@@ -92,6 +89,8 @@ our $_connected;
 
 
 =head1 FUNCTIONS
+
+Functions begining with the word C<simple> will not take into account multiple pronunciations, for which use functions ending with the word C<all>.
 
 =head2 &build
 
@@ -219,9 +218,7 @@ sub _disconnect {
 }
 
 
-=head2 SIMPLE LOOK UPS
 
-Functions begining with the word C<simple> will not take into account multiple pronunciations, for which use functions ending with the word C<all>.
 
 =head2 &simplefind ($word_to_match)
 
@@ -319,7 +316,7 @@ sub findall { my ($lookup) = (uc shift);
 
 =head2 &simplematch ($word1,$word2)
 
-Returns C<1> if C<$word1> rhymes with C<$word2>, otherwise returns C<undef>.
+Accepts two words as scalars and returns C<1> if C<$word1> rhymes with C<$word2>, otherwise returns C<undef>.
 
 =cut
 
@@ -340,6 +337,53 @@ sub simplematch { my ($lookup,$against) = (uc shift, uc shift);
 	return $found;
 }
 
+
+
+
+
+=head2 &matchall ($word_to_compare, $word2_to_compare);
+
+See if two words rhyme. Accepts two scalars to compare, and returns C<1> on success, otherwise C<undef>.
+
+=cut
+
+sub matchall {
+	my @words;
+	($words[0],$words[1]) = (uc $_[0], uc $_[1]);
+	unless (defined $words[0]and defined $words[1]) {
+		warn "&findall requires two scalars to lookup as its two arguments.";
+		return undef;
+	}
+	my $success;	# undef
+	my @found = {};
+	my $sth;
+	my $dbh = _connect;
+
+	CHECKBOTH:
+	for my $i (0..1){
+		warn "Looking up word $i ('$words[$i]') in multiple db  ... \n" if $chat;
+		$sth = $dbh->prepare("SELECT multiples FROM multiple WHERE word = ".$dbh->quote($words[$i]) );
+		$sth->execute();
+		my $lookup_ref = $sth->fetchrow_arrayref();
+		warn "... and got @$lookup_ref\n" if $chat and defined $lookup_ref;
+		$sth->finish();
+
+		# Not in mulitple table, try words table by setting the value explicitly
+		$lookup_ref = [$words[$i]] if (not defined $lookup_ref);
+
+		foreach my $lookup (split' ',@$lookup_ref[0]){
+			foreach ( @{_simplefind($dbh, $lookup)} ){
+				$found[$i]{$_} = 1;
+				if (exists $found[$i]{$words[0]} and exists $found[$i]{$words[1]}){
+					$success = 1;
+					last CHECKBOTH;
+				}
+			}
+		}
+	}
+	_disconnect();
+	return $success;
+}
 
 
 
@@ -372,6 +416,15 @@ sub _syllable { my ($dbh,$lookup) = (shift,shift);
 	@$syl_ref[0] = undef if not defined $syl_ref;
 	return @$syl_ref[0];
 }
+
+
+
+
+
+
+
+
+
 
 
 
@@ -415,6 +468,7 @@ If I can find dictionaries for German and Yiddish (or others), I'll add those to
 
 =head1 SEE ALSO
 
+L<Lingua::Rhyme::FindScheme>;
 L<DBI>;
 L<MySQL|http://www.mysql.com>;
 L<The Rhyming Dictionary|http://rhyme.sourceforge.net/index.html>;
@@ -433,38 +487,30 @@ Lee Goddard <lgoddard@cpan.org>
 
 Revision history for Perl extension Text::Rhyme.
 
-0.06  Thu May 31 14:35:00 2001
+0.07  Fri Jun 01 12:12:00 2001
+	- added matchall routine
 
+0.06  Thu May 31 14:35:00 2001
 	- corrected connection bug
 
 0.05  Thu May 31 13:13:00 2001
-
 	- added multiple.txt db
-
 	- added new functions and renamed old functions
 
 0.04  Wed May 30 19:01:25 2001
-
 	- completely rewritten - now uses a MySQL DB.
-
 	- moved namespace, as rhyming is now a linguist, not textual, operation (if it ever was).
 
 0.03  Tue May 29 13:35:12 2001
-
 	- ACTUALLY text-rhyme-0.03
-
 	- added parsing of final consenants. Still I can't spell.
 
 0.02  Tue May 29 12:32:00 2001
-
 	- ACTUALLY text-rhyme-0.02
-
 	- damn, got the module name wrong!
 
 0.01  Tue May 29 12:18:12 2001
-
 	- ACTUALLY text-rhyme-0.01
-
 	- original version; created by h2xs 1.20 with options
 
 		-Xcfn Text::Rhyme
