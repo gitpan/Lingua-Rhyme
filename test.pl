@@ -21,16 +21,26 @@ print "ok 1\n";
 my $filesbad=0;
 print "-e Rhyme/dict/EN/words.txt.......";
 if (-e 'Rhyme/dict/EN/words.txt'){
-	print "ok\n";
+	print "ok 1\n";
 } else {
-	print "not ok\n";
+	print "not ok 1\n";
 	$filesbad++;
 }
 print "-e Rhyme/dict/EN/rhymes.txt......";
 if (-e 'Rhyme/dict/EN/rhymes.txt'){
-	print "ok\n";
+	print "ok 2\n";
 } else {
-	print "not ok\n";
+	print "not ok 2\n";
 	$filesbad++
 }
-die "\nThe dictionary files did not install.\n------------------------------------\n" if $filesbad>0;
+print "-e Rhyme/dict/EN/multiple.txt....";
+if (-e 'Rhyme/dict/EN/multiple.txt'){
+	print "ok 3\n";
+} else {
+	print "not ok 3\n";
+	$filesbad++
+}
+
+die "\nThe dictionary files did not install correctly.",
+    "\n----------------------------------------------\n"
+    if $filesbad>0;

@@ -1,5 +1,9 @@
 Revision history for Perl extension Text::Rhyme.
 
+0.05  Thu May 31 13:13:00 2001
+	- added multiple.txt db
+	- added new functions and renamed old functions
+
 0.04  Wed May 30 19:01:25 2001
 	- completely rewritten - now uses a MySQL DB.
 	- moved namespace, as rhyming is now a linguist, not textual, operation
@@ -17,5 +21,3 @@ Revision history for Perl extension Text::Rhyme.
 	- ACTUALLY text-rhyme-0.01
 	- original version; created by h2xs 1.20 with options
 		-Xcfn Text::Rhyme
-
-

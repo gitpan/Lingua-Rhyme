@@ -5,4 +5,5 @@ Makefile.PL
 Rhyme.pm
 Rhyme/dict/EN/rhymes.txt
 Rhyme/dict/EN/words.txt
+Rhyme/dict/EN/multiple.txt
 test.pl

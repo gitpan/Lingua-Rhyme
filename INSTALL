@@ -10,7 +10,7 @@ And when you first run the module, set up the db
 by calling the build function before using it:
 
 	use Lingua::EN::Rhyme;
-	Lingua::EN::Rhyme::build;
+	Lingua::EN::Rhyme::build(1);
 
 
 PREREQUISITES
@@ -19,6 +19,7 @@ PREREQUISITES
 	DBI.pm
 	words.txt (supplied)
 	rhymes.txt (supplied)
+	multiples.txt (supplied)
 
 MORE INFO
 ----------------------------------------------------
