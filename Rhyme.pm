@@ -1,6 +1,6 @@
 #! perl -w
 package Lingua::Rhyme;
-our $VERSION = 0.05;
+our $VERSION = 0.06;
 
 use strict;
 use warnings;
@@ -195,7 +195,9 @@ sub build {
 # stores in global $_connected
 #
 sub _connect {
-	if (defined $_connected) { warn "Already connected to db.\n"; return $_connected }
+	if (defined $_connected) {
+		#warn "Already connected to db.\n" if $chat; return $_connected
+	}
 	die "Please read the POD and edit the source code to set the database-access variables."
 		if (not defined $user and not defined $password);
 	warn "Connecting to db...\n" if $chat;
@@ -246,15 +248,16 @@ sub simplefind { my ($lookup) = (uc shift);
 sub _simplefind { my ($dbh,$lookup) = (shift,shift);
 	my $sth;
 	my $rhymes_ref;
+	die "_simplefind requires 2 args " unless defined $dbh and defined $lookup;
 	warn "Looking up '$lookup' ... \n" if $chat;
-	$sth = $dbh->prepare("SELECT idx FROM words WHERE word = '$lookup'");
+	$sth = $dbh->prepare("SELECT idx FROM words WHERE word = ".$dbh->quote($lookup) );
 	$sth->execute();
 	my $idx_ref = $sth->fetchrow_arrayref();
 	warn "... and got @$idx_ref\n" if defined $idx_ref and $chat;
 	$sth->finish();
 	if (defined $idx_ref){
 		warn "Looking up index '@$idx_ref' ...\n"  if $chat;
-		$sth = $dbh->prepare("SELECT rhymes FROM rhymes WHERE idx = '@$idx_ref'");
+		$sth = $dbh->prepare("SELECT rhymes FROM rhymes WHERE idx = ".$dbh->quote(@$idx_ref) );
 		$sth->execute();
 		if  ($rhymes_ref = $sth->fetchrow_arrayref() ) {
 			chomp @$rhymes_ref;
@@ -274,8 +277,7 @@ sub _simplefind { my ($dbh,$lookup) = (shift,shift);
 
 
 
-
-=head2 &finall ($word_to_lookup)
+=head2 &findall ($word_to_lookup)
 
 Accepts a scalar as a word to look up, and returns a reference to an array containing all the matches for all pronunciations of the word.
 
@@ -291,7 +293,7 @@ sub findall { my ($lookup) = (uc shift);
 	my $dbh = _connect;
 
 	warn "Looking up '$lookup' in multiple db  ... \n" if $chat;
-	$sth = $dbh->prepare("SELECT multiples FROM multiple WHERE word = '$lookup'");
+	$sth = $dbh->prepare("SELECT multiples FROM multiple WHERE word = ".$dbh->quote($lookup) );
 	$sth->execute();
 	my $lookup_ref = $sth->fetchrow_arrayref();
 	warn "... and got @$lookup_ref\n" if $chat and defined $lookup_ref;
@@ -326,11 +328,19 @@ sub simplematch { my ($lookup,$against) = (uc shift, uc shift);
 		warn "&lookup requires a scalar to lookup, and a scalar to match against as its two arguments.";
 		return undef;
 	}
-	foreach (@{&simplefind($lookup)}) {
-		return 1 if $_ eq $against;
+	my $found;
+	my $dbh = _connect;
+	foreach (@{_simplefind($dbh,$lookup)}) {
+		if ($_ eq $against){
+			$found = 1;
+			last;
+		}
 	}
-	return undef;
+	_disconnect($dbh);
+	return $found;
 }
+
+
 
 
 =head2 &syllable ($word_to_lookup)
@@ -355,7 +365,7 @@ sub _syllable { my ($dbh,$lookup) = (shift,shift);
 	my $sth;
 	my $rhymes_ref;
 	warn "Looking up '$lookup' ... \n" if $chat;
-	$sth = $dbh->prepare("SELECT syllables FROM words WHERE word = '$lookup'");
+	$sth = $dbh->prepare("SELECT syllables FROM words WHERE word = ".$dbh->quote($lookup) );
 	$sth->execute();
 	my $syl_ref = $sth->fetchrow_arrayref();
 	warn "... and got @$syl_ref[0] syllable\n" if defined $syl_ref and $chat;
@@ -395,6 +405,10 @@ There appear to be duplicate entires in the DB:
 
 =head1 TODO
 
+=item Tidy
+
+Tidy the db accessing, error messaging and catching,  maybe?
+
 =item Languages
 
 If I can find dictionaries for German and Yiddish (or others), I'll add those too.
@@ -419,26 +433,40 @@ Lee Goddard <lgoddard@cpan.org>
 
 Revision history for Perl extension Text::Rhyme.
 
+0.06  Thu May 31 14:35:00 2001
+
+	- corrected connection bug
+
 0.05  Thu May 31 13:13:00 2001
+
 	- added multiple.txt db
+
 	- added new functions and renamed old functions
 
 0.04  Wed May 30 19:01:25 2001
+
 	- completely rewritten - now uses a MySQL DB.
-	- moved namespace, as rhyming is now a linguist, not textual, operation
-	  (if it ever was).
+
+	- moved namespace, as rhyming is now a linguist, not textual, operation (if it ever was).
 
 0.03  Tue May 29 13:35:12 2001
+
 	- ACTUALLY text-rhyme-0.03
+
 	- added parsing of final consenants. Still I can't spell.
 
 0.02  Tue May 29 12:32:00 2001
+
 	- ACTUALLY text-rhyme-0.02
+
 	- damn, got the module name wrong!
 
 0.01  Tue May 29 12:18:12 2001
+
 	- ACTUALLY text-rhyme-0.01
+
 	- original version; created by h2xs 1.20 with options
+
 		-Xcfn Text::Rhyme
 
 

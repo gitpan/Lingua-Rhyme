@@ -1,5 +1,8 @@
 Revision history for Perl extension Text::Rhyme.
 
+0.06  Thu May 31 14:35:00 2001
+	- corrected connection bug
+
 0.05  Thu May 31 13:13:00 2001
 	- added multiple.txt db
 	- added new functions and renamed old functions
